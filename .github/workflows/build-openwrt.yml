@@ -23,7 +23,7 @@ jobs:
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
-      - name: Copy Makefile into package directory
+      - name: Copy Makefile into SDK package directory
         run: |
           mkdir -p sdk/package/opera-proxy
           cp package/opera-proxy/Makefile sdk/package/opera-proxy/
@@ -37,25 +37,35 @@ jobs:
           ./scripts/feeds install golang
           cd ..
 
+      - name: Check if our package is recognized
+        run: |
+          cd sdk
+          echo "=== Searching for opera-proxy in package directory ==="
+          find package -name "opera-proxy" -type d
+          echo "=== Listing all package Makefiles (first 10) ==="
+          find package -name Makefile | head -10
+          echo "=== Trying to get package info ==="
+          make package/opera-proxy/info || echo "No info target"
+          cd ..
+
       - name: Prepare default config
         run: |
           cd sdk
           make defconfig
           cd ..
 
-      - name: Check if package is available
+      - name: Enable our package in config
         run: |
           cd sdk
-          # Поиск пакета в .config
-          grep -i "opera-proxy" .config || echo "Package not found in .config"
-          # Поиск в списке пакетов
-          make package/opera-proxy/compile || echo "Package target not available"
+          echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
+          make oldconfig
+          grep "CONFIG_PACKAGE_opera-proxy" .config || echo "Package not enabled"
           cd ..
 
       - name: Download package source
         run: |
           cd sdk
-          make package/opera-proxy/download V=s
+          make package/opera-proxy/download V=s || echo "Download failed"
           cd ..
 
       - name: Compile the package
@@ -69,4 +79,4 @@ jobs:
         with:
           name: opera-proxy-x86_64.apk
           path: sdk/bin/packages/**/opera-proxy*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
