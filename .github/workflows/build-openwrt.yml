@@ -24,21 +24,18 @@ jobs:
         run: |
           wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          if [ -d openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 ]; then
-            mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
-            echo "SDK successfully moved to sdk"
-          else
-            echo "Ошибка: папка SDK не найдена!"
-            ls -la
-            exit 1
-          fi
+          mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
       - name: Copy Makefile to SDK package directory
         run: |
           mkdir -p sdk/package/opera-proxy
           cp package/opera-proxy/Makefile sdk/package/opera-proxy/
-          echo "Makefile copied to sdk/package/opera-proxy/"
-          ls -la sdk/package/opera-proxy/
+
+      - name: Create source tarball
+        run: |
+          mkdir -p sdk/dl
+          # Создаём архив из всего репозитория, исключая .git и папку sdk
+          tar -czf sdk/dl/opera-proxy-1.1.0.tar.gz --exclude=.git --exclude=sdk .
 
       - name: Update feeds and install golang
         run: |
@@ -53,40 +50,23 @@ jobs:
           make defconfig
           cd ..
 
-      - name: Debug package detection
-        run: |
-          cd sdk
-          echo "=== Checking for golang-package.mk ==="
-          find feeds -name "golang-package.mk" -ls || echo "Not found"
-          echo "=== Running make info (may show errors) ==="
-          make info V=s || true
-          echo "=== Searching for opera-proxy in package directory ==="
-          find package -name "opera-proxy" -type d -ls
-          echo "=== Checking if Makefile is readable ==="
-          cat package/opera-proxy/Makefile || echo "Cannot read Makefile"
-          cd ..
-
       - name: Force enable opera-proxy in config
         run: |
           cd sdk
           echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
           make oldconfig
-          if grep -q "CONFIG_PACKAGE_opera-proxy" .config; then
-            echo "Package enabled successfully"
-          else
-            echo "WARNING: Package not enabled in .config"
-          fi
+          grep "CONFIG_PACKAGE_opera-proxy" .config || (echo "Package not enabled!" && exit 1)
           cd ..
 
-      - name: Compile the package (try anyway)
+      - name: Compile the package
         run: |
           cd sdk
-          make package/opera-proxy/compile V=s || echo "Compilation failed"
+          make package/opera-proxy/compile V=s
           cd ..
 
-      - name: Upload compiled package (if any)
+      - name: Upload compiled package
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-x86_64.apk
           path: sdk/bin/packages/**/opera-proxy*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
