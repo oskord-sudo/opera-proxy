@@ -33,11 +33,15 @@ jobs:
       - name: Add local feed and install package
         run: |
           cd sdk
-          # Добавляем локальный фид
-          ./scripts/feeds add local feeds/local
-          # Обновляем только что добавленный фид (чтобы он проиндексировался)
+          # Добавляем локальный фид с абсолютным путем
+          FEED_PATH="$(pwd)/feeds/local"
+          ./scripts/feeds add local "$FEED_PATH"
+          # Проверяем список фидов
+          echo "Feeds after add:"
+          ./scripts/feeds list -n
+          # Обновляем фид
           ./scripts/feeds update local
-          # Устанавливаем наш пакет из этого фида
+          # Устанавливаем пакет
           ./scripts/feeds install opera-proxy
           cd ..
 
