@@ -32,8 +32,8 @@ GO_PKG:=github.com/oskord-sudo/opera-proxy
 GO_PKG_LDFLAGS:=-X main.version=$(PKG_VERSION)
 
 define Package/opera-proxy/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/opera-proxy $(1)/usr/bin/
+  $(INSTALL_DIR) $(1)/usr/bin
+  $(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/opera-proxy $(1)/usr/bin/
 endef
 
 $(eval $(call GoPackage,opera-proxy))
