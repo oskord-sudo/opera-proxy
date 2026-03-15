@@ -10,7 +10,7 @@ on:
       opera_proxy_ref:
         description: "opera-proxy branch/tag/commit"
         required: true
-        default: "main"
+        default: "master"
 
 jobs:
   build:
