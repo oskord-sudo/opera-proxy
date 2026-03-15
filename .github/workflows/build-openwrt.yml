@@ -23,13 +23,6 @@ jobs:
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
-      - name: Update feeds and install golang
-        run: |
-          cd sdk
-          ./scripts/feeds update -a
-          ./scripts/feeds install golang
-          cd ..
-
       - name: Copy Makefile into local feed
         run: |
           mkdir -p sdk/feeds/local/opera-proxy
@@ -40,17 +33,25 @@ jobs:
       - name: Add local feed and install package
         run: |
           cd sdk
+          # Добавляем локальный фид
           ./scripts/feeds add local feeds/local
+          # Обновляем только что добавленный фид (чтобы он проиндексировался)
           ./scripts/feeds update local
+          # Устанавливаем наш пакет из этого фида
           ./scripts/feeds install opera-proxy
+          cd ..
+
+      - name: Update all feeds and install golang
+        run: |
+          cd sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install golang
           cd ..
 
       - name: Prepare default config
         run: |
           cd sdk
           make defconfig
-          # Проверим, появился ли наш пакет в конфигурации (необязательно, но полезно)
-          grep -i "opera-proxy" .config || echo "Package not found in .config (this is normal before download)"
           cd ..
 
       - name: Download package source
