@@ -28,6 +28,7 @@ define Build/Compile
 		export GOPROXY=https://proxy.golang.org; \
 		export GOOS=linux; \
 		export GOARCH=amd64; \
+		go mod tidy; \
 		go build -o opera-proxy . ; \
 	)
 endef
