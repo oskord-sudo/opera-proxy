@@ -46,11 +46,16 @@ jobs:
           rm -f *.tar.zst *.tar.xz
           mv openwrt-sdk* openwrt
 
-      # Копируем Makefile прямо в package/ (этот метод РАБОТАЕТ)
       - name: Copy Makefile to SDK package directory
         run: |
           mkdir -p openwrt/package/opera-proxy
           cp opera-proxy/package/opera-proxy/Makefile openwrt/package/opera-proxy/
+
+      # Создаём архив с исходным кодом (исключая .git)
+      - name: Create source tarball
+        run: |
+          mkdir -p openwrt/dl
+          tar -czf openwrt/dl/opera-proxy-1.1.0.tar.gz -C opera-proxy --exclude=.git .
 
       - name: Update feeds and install golang
         run: |
