@@ -18,7 +18,7 @@ define Package/opera-proxy
   CATEGORY:=Network
   TITLE:=Opera VPN/Proxy service
   URL:=https://github.com/oskord-sudo/opera-proxy
-  DEPENDS:=+ca-bundle
+  DEPENDS:=+libc +ca-bundle
 endef
 
 define Build/Compile
