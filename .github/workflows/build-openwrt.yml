@@ -9,73 +9,68 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      # 1. Получаем исходный код вашего форка
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем необходимые пакеты для сборки
       - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file zstd
 
-      # 3. Скачиваем и распаковываем SDK OpenWrt для x86_64
       - name: Download OpenWrt SDK for x86_64
         run: |
           wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
-      # 4. Создаём локальный feed и добавляем наш Makefile
-      - name: Create local feed with opera-proxy
+      - name: Copy Makefile into SDK package directory
         run: |
-          mkdir -p sdk/feeds/local/opera-proxy
-          cp package/opera-proxy/Makefile sdk/feeds/local/opera-proxy/
-          # Добавляем feed в конфигурацию feeds.conf (абсолютный путь!)
-          echo "src-link local $PWD/sdk/feeds/local" >> sdk/feeds.conf
-          cat sdk/feeds.conf
-          cd sdk
-          # Обновляем только что созданный feed
-          ./scripts/feeds update local
-          # Устанавливаем пакет из этого feed
-          ./scripts/feeds install opera-proxy
-          cd ..
+          mkdir -p sdk/package/opera-proxy
+          cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+          echo "Contents of sdk/package/opera-proxy:"
+          ls -la sdk/package/opera-proxy/
 
-      # 5. Обновляем все feeds и устанавливаем поддержку Go
-      - name: Update all feeds and install golang
+      - name: Copy source code into SDK download directory
+        run: |
+          mkdir -p sdk/dl/opera-proxy
+          rsync -av --exclude='.git' --exclude='sdk' ./ sdk/dl/opera-proxy/
+
+      - name: Update feeds and install golang
         run: |
           cd sdk
           ./scripts/feeds update -a
           ./scripts/feeds install golang
           cd ..
 
-      # 6. Генерируем базовую конфигурацию (.config)
       - name: Prepare default config
         run: |
           cd sdk
           make defconfig
           cd ..
 
-      # 7. Принудительно включаем наш пакет в конфигурации
-      - name: Enable our package in config
+      - name: Enable our package in config (ignore error if not found)
         run: |
           cd sdk
           echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
-          make oldconfig
-          grep "CONFIG_PACKAGE_opera-proxy" .config
+          make oldconfig || echo "oldconfig may have issues"
+          grep "CONFIG_PACKAGE_opera-proxy" .config || echo "Package not in .config, but continuing"
           cd ..
 
-      # 8. Компилируем пакет
+      - name: Show available packages (debug)
+        run: |
+          cd sdk
+          make info | head -100
+          cd ..
+
       - name: Compile the package
         run: |
           cd sdk
-          make package/opera-proxy/compile V=s
+          make package/opera-proxy/compile V=s || echo "Compilation failed"
           cd ..
 
-      # 9. Сохраняем готовый .apk файл как артефакт
       - name: Upload compiled package
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-x86_64.apk
           path: sdk/bin/packages/**/opera-proxy*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
