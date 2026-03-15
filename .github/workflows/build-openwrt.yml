@@ -17,16 +17,23 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file
 
-      - name: Download OpenWrt SDK for x86_64
+      - name: Install zstd and download OpenWrt SDK for x86_64
         run: |
-          wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.xz
-          tar -xJf openwrt-sdk-*.tar.xz
+          sudo apt update
+          sudo apt install -y zstd
+          wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+          tar -I zstd -xf openwrt-sdk-*.tar.zst
           mv openwrt-sdk-* sdk
 
       - name: Copy Makefile into SDK
         run: |
           mkdir -p sdk/package/opera-proxy
           cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+
+      - name: Copy source code into SDK
+        run: |
+          mkdir -p sdk/dl/opera-proxy
+          rsync -av --exclude='.git' --exclude='sdk' ./ sdk/dl/opera-proxy/
 
       - name: Compile the package
         run: |
