@@ -1,73 +1,83 @@
-name: Build opera-proxy for OpenWrt 25.12.0 (x86_64)
+name: Build opera-proxy for OpenWrt (x86_64)
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    inputs:
+      openwrt_version:
+        description: "OpenWrt version (25.12.0 or SNAPSHOT)"
+        required: true
+        default: "25.12.0"
+      opera_proxy_ref:
+        description: "opera-proxy branch/tag/commit"
+        required: true
+        default: "main"
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout code
+      - name: Checkout opera-proxy repository
         uses: actions/checkout@v4
+        with:
+          path: opera-proxy
+          ref: ${{ github.event.inputs.opera_proxy_ref }}
+          fetch-depth: 0
 
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file zstd
 
-      - name: Download and extract SDK
+      - name: Download and prepare SDK
         run: |
-          wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
+          set -e -x
+          if [ "${{ github.event.inputs.openwrt_version }}" = "SNAPSHOT" ]; then
+            BASE_URL="https://downloads.openwrt.org/snapshots/targets/x86/64/"
+          else
+            BASE_URL="https://downloads.openwrt.org/releases/${{ github.event.inputs.openwrt_version }}/targets/x86/64/"
+          fi
+          # Ищем SDK
+          SDK_URL=$(curl -s "${BASE_URL}" | grep -oP 'href="openwrt-sdk[^"]+\.tar\.(zst|xz)"' | sed -e 's/href="//' -e 's/"$//' | head -n1)
+          if [ -z "$SDK_URL" ]; then
+            echo "SDK file not found."
+            exit 1
+          fi
+          curl -fsLO "${BASE_URL}${SDK_URL}"
+          tar -xf "$(basename "$SDK_URL")"
+          rm -f *.tar.zst *.tar.xz
+          mv openwrt-sdk* openwrt
 
-      - name: Copy Makefile to SDK package directory
-        run: |
-          mkdir -p sdk/package/opera-proxy
-          cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+          # Добавляем локальный фид с исходниками opera-proxy (включая package/opera-proxy/Makefile)
+          echo "src-cpy opera-proxy ../opera-proxy" >> openwrt/feeds.conf.default
 
-      - name: Create source tarball using git archive
-        run: |
-          mkdir -p sdk/dl
-          git archive --format=tar.gz --output=sdk/dl/opera-proxy-1.1.0.tar.gz HEAD
-          echo "Размер архива:"
-          ls -lh sdk/dl/opera-proxy-1.1.0.tar.gz
-
-      - name: Update feeds and install golang
-        run: |
-          cd sdk
+          cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install golang
-          cd ..
+          ./scripts/feeds install opera-proxy
 
-      - name: Prepare default config
-        run: |
-          cd sdk
-          make defconfig
-          cd ..
-
-      - name: Force enable opera-proxy in config
-        run: |
-          cd sdk
+          # Получаем базовую конфигурацию (если есть)
+          if curl -fsL "${BASE_URL}config.buildinfo" -o .config; then
+            echo "Using config.buildinfo"
+          else
+            make defconfig
+          fi
+          # Включаем наш пакет
           echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
           make oldconfig
-          grep "CONFIG_PACKAGE_opera-proxy" .config || (echo "Package not enabled!" && exit 1)
           cd ..
 
-      - name: Compile the package
+      - name: Compile opera-proxy
         run: |
-          cd sdk
-          make package/opera-proxy/compile V=s
-          cd ..
+          cd openwrt
+          make package/opera-proxy/{clean,download,prepare,compile} -j $(nproc) V=s
 
-      - name: Upload compiled package
+      - name: Prepare artifacts
+        run: |
+          mkdir release
+          find openwrt/bin/packages -name "opera-proxy*.apk" -o -name "opera-proxy*.ipk" -exec cp {} release \;
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: opera-proxy-x86_64.apk
-          path: sdk/bin/packages/**/opera-proxy*.apk
-          if-no-files-found: error
+          name: opera-proxy-${{ github.event.inputs.openwrt_version }}-x86_64
+          path: release/*
