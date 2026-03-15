@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # убирает предупреждение о Node.js
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -12,28 +15,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file zstd
 
-      - name: Download OpenWrt SDK for x86_64
+      - name: Download and extract SDK
         run: |
           wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
+          tar -I zstd -xf openwrt-sdk-*.tar.zst
+          mv openwrt-sdk-* sdk
 
-      - name: Copy Makefile into SDK package directory
+      - name: Copy Makefile to SDK package directory
         run: |
           mkdir -p sdk/package/opera-proxy
           cp package/opera-proxy/Makefile sdk/package/opera-proxy/
-          echo "Contents of sdk/package/opera-proxy:"
+          echo "Makefile copied to sdk/package/opera-proxy/"
           ls -la sdk/package/opera-proxy/
-
-      - name: Copy source code into SDK download directory
-        run: |
-          mkdir -p sdk/dl/opera-proxy
-          rsync -av --exclude='.git' --exclude='sdk' ./ sdk/dl/opera-proxy/
 
       - name: Update feeds and install golang
         run: |
@@ -48,24 +46,19 @@ jobs:
           make defconfig
           cd ..
 
-      - name: Enable our package in config (ignore error if not found)
+      - name: Force enable opera-proxy in config
         run: |
           cd sdk
           echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
-          make oldconfig || echo "oldconfig may have issues"
-          grep "CONFIG_PACKAGE_opera-proxy" .config || echo "Package not in .config, but continuing"
-          cd ..
-
-      - name: Show available packages (debug)
-        run: |
-          cd sdk
-          make info | head -100
+          make oldconfig
+          # Проверим, включился ли пакет
+          grep "CONFIG_PACKAGE_opera-proxy" .config || (echo "Package not enabled!" && exit 1)
           cd ..
 
       - name: Compile the package
         run: |
           cd sdk
-          make package/opera-proxy/compile V=s || echo "Compilation failed"
+          make package/opera-proxy/compile V=s
           cd ..
 
       - name: Upload compiled package
@@ -73,4 +66,4 @@ jobs:
         with:
           name: opera-proxy-x86_64.apk
           path: sdk/bin/packages/**/opera-proxy*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
