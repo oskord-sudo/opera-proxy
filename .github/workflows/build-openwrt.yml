@@ -15,12 +15,10 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file
+          sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file zstd
 
-      - name: Install zstd and download OpenWrt SDK for x86_64
+      - name: Download OpenWrt SDK for x86_64
         run: |
-          sudo apt update
-          sudo apt install -y zstd
           wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
@@ -35,12 +33,16 @@ jobs:
           mkdir -p sdk/dl/opera-proxy
           rsync -av --exclude='.git' --exclude='sdk' ./ sdk/dl/opera-proxy/
 
-      - name: Prepare default configuration and compile
+      - name: Update feeds and install golang
         run: |
           cd sdk
-          # Создаём конфигурацию по умолчанию (без интерактива)
+          ./scripts/feeds update -a
+          ./scripts/feeds install golang
+
+      - name: Prepare default config and compile
+        run: |
+          cd sdk
           make defconfig
-          # Компилируем пакет
           make package/opera-proxy/compile V=s
           cd ..
 
