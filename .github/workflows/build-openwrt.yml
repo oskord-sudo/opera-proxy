@@ -23,6 +23,13 @@ jobs:
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
+      - name: Update feeds and install golang
+        run: |
+          cd sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install golang
+          cd ..
+
       - name: Copy Makefile into local feed
         run: |
           mkdir -p sdk/feeds/local/opera-proxy
@@ -34,14 +41,9 @@ jobs:
         run: |
           cd sdk
           ./scripts/feeds add local feeds/local
+          ./scripts/feeds update local
           ./scripts/feeds install opera-proxy
           cd ..
-
-      - name: Update feeds and install golang
-        run: |
-          cd sdk
-          ./scripts/feeds update -a
-          ./scripts/feeds install golang
 
       - name: Prepare default config
         run: |
