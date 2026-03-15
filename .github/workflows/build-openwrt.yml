@@ -28,7 +28,7 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file zstd
 
-      - name: Download and prepare SDK
+      - name: Download and extract SDK
         run: |
           set -e -x
           if [ "${{ github.event.inputs.openwrt_version }}" = "SNAPSHOT" ]; then
@@ -46,35 +46,42 @@ jobs:
           rm -f *.tar.zst *.tar.xz
           mv openwrt-sdk* openwrt
 
-          # Правильное добавление локального фида
-          echo "src-link opera-proxy $PWD/../opera-proxy" >> openwrt/feeds.conf.default
+      # Копируем Makefile прямо в package/ (этот метод РАБОТАЕТ)
+      - name: Copy Makefile to SDK package directory
+        run: |
+          mkdir -p openwrt/package/opera-proxy
+          cp opera-proxy/package/opera-proxy/Makefile openwrt/package/opera-proxy/
 
+      - name: Update feeds and install golang
+        run: |
           cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install golang
-          ./scripts/feeds install opera-proxy
-
-          if curl -fsL "${BASE_URL}config.buildinfo" -o .config; then
-            echo "Using config.buildinfo"
-          else
-            make defconfig
-          fi
-          echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
-          make oldconfig
           cd ..
 
-      - name: Compile opera-proxy
+      - name: Prepare default config
         run: |
           cd openwrt
-          make package/opera-proxy/{clean,download,prepare,compile} -j $(nproc) V=s
+          make defconfig
+          cd ..
 
-      - name: Prepare artifacts
+      - name: Force enable opera-proxy in config
         run: |
-          mkdir release
-          find openwrt/bin/packages -name "opera-proxy*.apk" -o -name "opera-proxy*.ipk" -exec cp {} release \;
+          cd openwrt
+          echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
+          make oldconfig
+          grep "CONFIG_PACKAGE_opera-proxy" .config || (echo "Package not enabled!" && exit 1)
+          cd ..
 
-      - name: Upload artifacts
+      - name: Compile the package
+        run: |
+          cd openwrt
+          make package/opera-proxy/compile V=s
+          cd ..
+
+      - name: Upload compiled package
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-${{ github.event.inputs.openwrt_version }}-x86_64
-          path: release/*
+          path: openwrt/bin/packages/**/opera-proxy*.apk
+          if-no-files-found: error
