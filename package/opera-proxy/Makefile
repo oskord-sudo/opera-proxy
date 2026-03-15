@@ -23,13 +23,7 @@ endef
 
 define Build/Compile
 	( \
-		echo "=== PKG_BUILD_DIR: $(PKG_BUILD_DIR) ==="; \
 		cd $(PKG_BUILD_DIR); \
-		echo "=== Содержимое корня ==="; \
-		ls -la; \
-		echo "=== Поиск main.go ==="; \
-		find . -name "main.go" -type f; \
-		echo "=== Запуск go build ==="; \
 		export GO111MODULE=on; \
 		export GOPROXY=https://proxy.golang.org; \
 		export GOOS=linux; \
