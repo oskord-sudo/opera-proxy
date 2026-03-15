@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # убирает предупреждение о Node.js
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -23,8 +23,15 @@ jobs:
       - name: Download and extract SDK
         run: |
           wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          tar -I zstd -xf openwrt-sdk-*.tar.zst
-          mv openwrt-sdk-* sdk
+          tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+          if [ -d openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 ]; then
+            mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
+            echo "SDK successfully moved to sdk"
+          else
+            echo "Ошибка: папка SDK не найдена!"
+            ls -la
+            exit 1
+          fi
 
       - name: Copy Makefile to SDK package directory
         run: |
@@ -51,7 +58,6 @@ jobs:
           cd sdk
           echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
           make oldconfig
-          # Проверим, включился ли пакет
           grep "CONFIG_PACKAGE_opera-proxy" .config || (echo "Package not enabled!" && exit 1)
           cd ..
 
