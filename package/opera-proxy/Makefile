@@ -25,11 +25,11 @@ define Build/Compile
 	( \
 		echo "=== PKG_BUILD_DIR: $(PKG_BUILD_DIR) ==="; \
 		cd $(PKG_BUILD_DIR); \
-		echo "=== Directory listing ==="; \
-		ls -la; \
-		echo "=== Go files ==="; \
-		find . -name "*.go" -type f; \
-		echo "=== Running go build ==="; \
+		echo "=== Содержимое директории (полное) ==="; \
+		ls -laR; \
+		echo "=== Поиск main.go ==="; \
+		find . -name "main.go" -type f; \
+		echo "=== Запуск go build ==="; \
 		export GO111MODULE=on; \
 		export GOPROXY=https://proxy.golang.org; \
 		export GOOS=linux; \
