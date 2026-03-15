@@ -34,8 +34,8 @@ jobs:
       - name: Create source tarball
         run: |
           mkdir -p sdk/dl
-          # Создаём архив из всего репозитория, исключая .git и папку sdk
-          tar -czf sdk/dl/opera-proxy-1.1.0.tar.gz --exclude=.git --exclude=sdk .
+          # Создаём архив так, чтобы при распаковке все файлы были в корне
+          tar -czf sdk/dl/opera-proxy-1.1.0.tar.gz --exclude=.git --exclude=sdk -C . .
 
       - name: Update feeds and install golang
         run: |
