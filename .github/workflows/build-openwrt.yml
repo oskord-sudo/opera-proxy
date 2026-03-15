@@ -23,25 +23,14 @@ jobs:
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
-      - name: Copy Makefile into local feed
+      - name: Copy Makefile into package directory
         run: |
-          mkdir -p sdk/feeds/local/opera-proxy
-          cp package/opera-proxy/Makefile sdk/feeds/local/opera-proxy/
-          echo "Contents of sdk/feeds/local/opera-proxy:"
-          ls -la sdk/feeds/local/opera-proxy/
+          mkdir -p sdk/package/opera-proxy
+          cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+          echo "Contents of sdk/package/opera-proxy:"
+          ls -la sdk/package/opera-proxy/
 
-      - name: Add local feed via feeds.conf
-        run: |
-          cd sdk
-          # Создаем feeds.conf с указанием локального фида
-          echo "src-link local $PWD/feeds/local" > feeds.conf
-          # Обновляем локальный фид
-          ./scripts/feeds update local
-          # Устанавливаем пакет
-          ./scripts/feeds install opera-proxy
-          cd ..
-
-      - name: Update all feeds and install golang
+      - name: Update feeds and install golang
         run: |
           cd sdk
           ./scripts/feeds update -a
@@ -52,6 +41,15 @@ jobs:
         run: |
           cd sdk
           make defconfig
+          cd ..
+
+      - name: Check if package is available
+        run: |
+          cd sdk
+          # Поиск пакета в .config
+          grep -i "opera-proxy" .config || echo "Package not found in .config"
+          # Поиск в списке пакетов
+          make package/opera-proxy/compile || echo "Package target not available"
           cd ..
 
       - name: Download package source
