@@ -4,10 +4,10 @@ PKG_NAME:=opera-proxy
 PKG_VERSION:=1.1.0
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/oskord-sudo/opera-proxy.git
-PKG_SOURCE_VERSION:=HEAD
-PKG_SOURCE_MIRROR:=0
+# Указываем, что исходники лежат в dl/ в виде архива
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_PROTO:=none
+PKG_MIRROR_HASH:=skip
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
@@ -23,7 +23,6 @@ define Package/opera-proxy
 endef
 
 define Build/Compile
-	# Переходим в директорию с исходниками
 	cd $(PKG_BUILD_DIR) && \
 	export GO111MODULE=on && \
 	export GOPROXY=https://proxy.golang.org && \
