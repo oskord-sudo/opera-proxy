@@ -31,10 +31,12 @@ jobs:
           mkdir -p sdk/package/opera-proxy
           cp package/opera-proxy/Makefile sdk/package/opera-proxy/
 
-      - name: Create source tarball
+      - name: Create source tarball using git archive
         run: |
           mkdir -p sdk/dl
-          tar -czf sdk/dl/opera-proxy-1.1.0.tar.gz --exclude=.git --exclude=sdk -C . .
+          git archive --format=tar.gz --output=sdk/dl/opera-proxy-1.1.0.tar.gz HEAD
+          echo "Размер архива:"
+          ls -lh sdk/dl/opera-proxy-1.1.0.tar.gz
 
       - name: Update feeds and install golang
         run: |
