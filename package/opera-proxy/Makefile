@@ -7,33 +7,34 @@ PKG_RELEASE:=1
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/oskord-sudo/opera-proxy.git
 PKG_SOURCE_VERSION:=HEAD
-PKG_MIRROR_HASH:=skip
+PKG_SOURCE_MIRROR:=0
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/opera-proxy
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Opera VPN/Proxy service
   URL:=https://github.com/oskord-sudo/opera-proxy
-  DEPENDS:=$(GO_ARCH_DEPENDS)
+  DEPENDS:=+ca-bundle
 endef
 
-define Package/opera-proxy/description
-  A tool that uses Opera VPN/proxy infrastructure.
-  Built via GitHub Actions for OpenWrt 25.12.0 (x86_64).
+define Build/Compile
+	# Переходим в директорию с исходниками
+	cd $(PKG_BUILD_DIR) && \
+	export GO111MODULE=on && \
+	export GOPROXY=https://proxy.golang.org && \
+	export GOOS=linux && \
+	export GOARCH=amd64 && \
+	go build -o opera-proxy
 endef
-
-GO_PKG:=github.com/oskord-sudo/opera-proxy
-GO_PKG_LDFLAGS:=-X main.version=$(PKG_VERSION)
 
 define Package/opera-proxy/install
-  $(INSTALL_DIR) $(1)/usr/bin
-  $(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/opera-proxy $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/opera-proxy $(1)/usr/bin/
 endef
 
-$(eval $(call GoPackage,opera-proxy))
+$(eval $(call BuildPackage,opera-proxy))
