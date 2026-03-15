@@ -1,0 +1,42 @@
+name: Build opera-proxy for OpenWrt 25.12.0 (x86_64)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 rsync gawk unzip libncurses-dev wget file
+
+      - name: Download OpenWrt SDK for x86_64
+        run: |
+          wget https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.xz
+          tar -xJf openwrt-sdk-*.tar.xz
+          mv openwrt-sdk-* sdk
+
+      - name: Copy Makefile into SDK
+        run: |
+          mkdir -p sdk/package/opera-proxy
+          cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+
+      - name: Compile the package
+        run: |
+          cd sdk
+          make package/opera-proxy/compile V=s
+          cd ..
+
+      - name: Upload compiled package
+        uses: actions/upload-artifact@v4
+        with:
+          name: opera-proxy-x86_64.apk
+          path: sdk/bin/packages/**/opera-proxy*.apk
+          if-no-files-found: error
