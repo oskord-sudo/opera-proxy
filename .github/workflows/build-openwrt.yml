@@ -23,15 +23,19 @@ jobs:
           tar -I zstd -xf openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64 sdk
 
-      - name: Copy Makefile into SDK
+      - name: Copy Makefile into local feed
         run: |
-          mkdir -p sdk/package/opera-proxy
-          cp package/opera-proxy/Makefile sdk/package/opera-proxy/
+          mkdir -p sdk/feeds/local/opera-proxy
+          cp package/opera-proxy/Makefile sdk/feeds/local/opera-proxy/
+          echo "Contents of sdk/feeds/local/opera-proxy:"
+          ls -la sdk/feeds/local/opera-proxy/
 
-      - name: Copy source code into SDK
+      - name: Add local feed and install package
         run: |
-          mkdir -p sdk/dl/opera-proxy
-          rsync -av --exclude='.git' --exclude='sdk' ./ sdk/dl/opera-proxy/
+          cd sdk
+          ./scripts/feeds add local feeds/local
+          ./scripts/feeds install opera-proxy
+          cd ..
 
       - name: Update feeds and install golang
         run: |
@@ -39,10 +43,23 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install golang
 
-      - name: Prepare default config and compile
+      - name: Prepare default config
         run: |
           cd sdk
           make defconfig
+          # Проверим, появился ли наш пакет в конфигурации (необязательно, но полезно)
+          grep -i "opera-proxy" .config || echo "Package not found in .config (this is normal before download)"
+          cd ..
+
+      - name: Download package source
+        run: |
+          cd sdk
+          make package/opera-proxy/download V=s
+          cd ..
+
+      - name: Compile the package
+        run: |
+          cd sdk
           make package/opera-proxy/compile V=s
           cd ..
 
