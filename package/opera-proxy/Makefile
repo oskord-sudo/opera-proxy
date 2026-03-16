@@ -18,7 +18,7 @@ define Package/opera-proxy
   CATEGORY:=Network
   TITLE:=Opera VPN/Proxy service
   URL:=https://github.com/oskord-sudo/opera-proxy
-  DEPENDS:=+libc +ca-bundle
+  DEPENDS:=+ca-bundle
 endef
 
 define Build/Compile
@@ -28,6 +28,7 @@ define Build/Compile
 		export GOPROXY=https://proxy.golang.org; \
 		export GOOS=linux; \
 		export GOARCH=amd64; \
+		export CGO_ENABLED=0; \
 		go mod tidy; \
 		go build -o opera-proxy . ; \
 	)
