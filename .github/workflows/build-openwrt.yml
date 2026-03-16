@@ -57,9 +57,9 @@ jobs:
       - name: Create source tarball with proper structure
         run: |
           mkdir -p openwrt/dl
-          mkdir -p temp/opera-proxy-1.1.0
-          rsync -av --exclude=.git opera-proxy/ temp/opera-proxy-1.1.0/
-          tar -czf openwrt/dl/opera-proxy-1.1.0.tar.gz -C temp .
+          mkdir -p temp/opera-proxy-1.15.0
+          rsync -av --exclude=.git opera-proxy/ temp/opera-proxy-1.15.0/
+          tar -czf openwrt/dl/opera-proxy-1.15.0.tar.gz -C temp .
           rm -rf temp
 
       - name: Update feeds and install golang
